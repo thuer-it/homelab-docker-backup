@@ -1,0 +1,13 @@
+[Unit]
+Description=Homelab Docker Backup — täglicher Timer
+
+[Timer]
+# Täglich um 02:30 (nach möglichen nächtlichen Cron-Jobs)
+OnCalendar=*-*-* 02:30:00
+# Zufälliger Versatz bis 15 Minuten (verhindert gleichzeitige Last bei mehreren Servern)
+RandomizedDelaySec=900
+# Nachholen wenn Server zum Zeitpunkt offline war
+Persistent=true
+
+[Install]
+WantedBy=timers.target
