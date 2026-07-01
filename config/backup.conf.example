@@ -1,0 +1,60 @@
+# =============================================================================
+# homelab-docker-backup — Konfiguration
+# Kopieren nach: /etc/homelab-backup/backup.conf
+# =============================================================================
+
+# Server-Name (= Unterverzeichnis auf dem NAS)
+# Standard: Hostname automatisch erkennen
+SERVER_NAME="$(hostname)"
+
+# NFS-Mountpoint auf diesem Server
+BACKUP_ROOT="/mnt/nas"
+
+# Aufbewahrung
+RETENTION_DAYS=14        # Volumes & Bind-Mounts
+DB_RETENTION_DAYS=30     # Datenbank-Dumps
+
+# -----------------------------------------------------------------------------
+# Datenbank-Container
+# Format: "container_name:type"
+# type: postgres | mysql
+# Zugangsdaten werden automatisch aus den Container-Umgebungsvariablen gelesen.
+# -----------------------------------------------------------------------------
+DB_CONTAINERS=(
+  # Beispiele — anpassen für diesen Server:
+  # "netbox-postgres:postgres"
+  # "zabbix-mysql:mysql"
+  # "immich-postgres:postgres"
+  # "erpnext-db-1:mysql"
+)
+
+# -----------------------------------------------------------------------------
+# Bind-Mount-Pfade
+# Pfade außerhalb von /var/lib/docker/volumes, die zusätzlich gesichert werden.
+# -----------------------------------------------------------------------------
+EXTRA_PATHS=(
+  # "/opt/symcon"
+  # "/opt/zigbee2mqtt"
+)
+
+# -----------------------------------------------------------------------------
+# Volumes vom Backup ausschließen
+# -----------------------------------------------------------------------------
+EXCLUDE_VOLUMES=(
+  # "some_cache_volume"
+)
+
+# -----------------------------------------------------------------------------
+# Dockhand-Export (nur auf dem Server, auf dem Dockhand läuft)
+# -----------------------------------------------------------------------------
+DOCKHAND_ENABLED=false
+DOCKHAND_URL="http://localhost:3011"
+DOCKHAND_TOKEN=""         # Dockhand: Settings → Auth Tokens
+
+# -----------------------------------------------------------------------------
+# Benachrichtigungen (optional)
+# Wird aufgerufen wenn Backup fehlschlägt: notify "Fehlermeldung"
+# Leer lassen um Benachrichtigungen zu deaktivieren.
+# Beispiel Zabbix-Sender: /usr/bin/zabbix_sender -z 192.168.0.253 -s "$(hostname)" -k backup.status -o "$1"
+# -----------------------------------------------------------------------------
+NOTIFY_CMD=""
