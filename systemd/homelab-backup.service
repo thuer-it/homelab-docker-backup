@@ -1,0 +1,13 @@
+[Unit]
+Description=Homelab Docker Backup
+After=network.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/homelab-docker-backup/scripts/backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homelab-backup
+# Backup darf max. 2 Stunden dauern
+TimeoutStartSec=7200
