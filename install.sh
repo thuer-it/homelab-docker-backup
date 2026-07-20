@@ -4,6 +4,7 @@
 # =============================================================================
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 INSTALL_DIR="/opt/homelab-docker-backup"
 CONF_DIR="/etc/homelab-backup"
 
@@ -27,10 +28,14 @@ if [[ ${#missing[@]} -gt 0 ]]; then
   exit 1
 fi
 
-# Scripts kopieren
+# Scripts kopieren (nur wenn nicht bereits am Zielort)
 echo "→ Installiere nach ${INSTALL_DIR}…"
 mkdir -p "${INSTALL_DIR}"
-cp -r scripts/ "${INSTALL_DIR}/"
+if [[ "$(realpath "${SCRIPT_DIR}")" != "$(realpath "${INSTALL_DIR}")" ]]; then
+  cp -r scripts/ "${INSTALL_DIR}/"
+else
+  echo "  → Scripts bereits in ${INSTALL_DIR} — Copy übersprungen"
+fi
 chmod +x "${INSTALL_DIR}/scripts/backup.sh"
 chmod +x "${INSTALL_DIR}/scripts/restore.sh"
 chmod +x "${INSTALL_DIR}/scripts/modules/"*.sh
