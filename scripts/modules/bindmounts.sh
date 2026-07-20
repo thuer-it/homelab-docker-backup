@@ -8,13 +8,19 @@
 
 # Systemspfade die nie gesichert werden
 readonly BINDMOUNT_SKIP_PREFIXES=(
+  /
   /proc /sys /dev /run /tmp
   /var/run /var/lib/docker
   /etc/localtime /etc/timezone /etc/hosts /etc/resolv.conf /etc/hostname
+  /usr /bin /sbin /lib /lib64 /boot
 )
 
 _should_skip() {
   local path="$1"
+  # Wurzelpfad immer überspringen
+  [[ "${path}" == "/" ]] && return 0
+  # Pfade mit weniger als 2 Komponenten überspringen (/home, /opt wären ok,
+  # aber wir prüfen explizit gegen die Liste)
   for prefix in "${BINDMOUNT_SKIP_PREFIXES[@]}"; do
     [[ "${path}" == "${prefix}" || "${path}" == "${prefix}/"* ]] && return 0
   done
@@ -41,7 +47,7 @@ backup_bindmounts() {
   # Zusammenführen mit EXTRA_PATHS (Duplikate entfernen)
   local all_paths=()
   declare -A seen=()
-  for p in "${auto_paths[@]}" "${EXTRA_PATHS[@]:-}"; do
+  for p in "${auto_paths[@]+"${auto_paths[@]}"}" "${EXTRA_PATHS[@]+"${EXTRA_PATHS[@]}"}"; do
     [[ -z "${p}" || -n "${seen[$p]:-}" ]] && continue
     seen["${p}"]=1
     all_paths+=("${p}")
@@ -55,7 +61,7 @@ backup_bindmounts() {
   local errors=0
   for src in "${all_paths[@]}"; do
     if [[ ! -e "${src}" ]]; then
-      warn "bindmounts: '${src}' existiert nicht, übersprungen"
+      warn "bindmounts: '${src}' existiert nicht, øbersprungen"
       continue
     fi
 
