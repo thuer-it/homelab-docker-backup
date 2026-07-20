@@ -10,7 +10,7 @@ backup_mysql() {
   mkdir -p "${dest_dir}"
 
   if ! container_running "${container}"; then
-    warn "mysql: Container '${container}' läuft nicht — übersprungen"
+    warn "mysql: Container '${container}' läuft nicht — øbersprungen"
     return 0
   fi
 
@@ -33,40 +33,59 @@ backup_mysql() {
   local outfile="${dest_dir}/${container}-${BACKUP_DATE}.sql.gz"
   log "mysql: Dump ${container}…"
 
+  # mysqldump-Argumente: --events und --routines weglassen wenn keine Rechte vorhanden
   local dump_args=(
     --single-transaction
     --quick
     --skip-lock-tables
-    --routines
+    --skip-events
     --triggers
-    --events
   )
+
+  # Welches Binary ist verføgbar? (MariaDB 11+ nutzt mariadb-dump)
+  local dump_bin
+  if docker exec "${container}" which mariadb-dump &>/dev/null 2>&1; then
+    dump_bin="mariadb-dump"
+  else
+    dump_bin="mysqldump"
+  fi
 
   if [[ -n "${root_pass}" ]]; then
     # Root-Dump: alle Datenbanken
+    local dump_err
+    dump_err=$(mktemp)
     if docker exec "${container}" \
-         mysqldump -u root -p"${root_pass}" \
+         "${dump_bin}" -u root -p"${root_pass}" \
            --all-databases "${dump_args[@]}" \
+         2>"${dump_err}" \
        | gzip > "${outfile}"; then
+      rm -f "${dump_err}"
       ok "mysql: ${container} (all-databases) → $(human_size "${outfile}")"
       return 0
+    else
+      warn "mysql: Root-Dump fehlgeschlagen ($(cat "${dump_err}" | head -1))"
+      rm -f "${dump_err}" "${outfile}"
     fi
   fi
 
   # Fallback: einzelne Datenbank mit User-Credentials
   if [[ -z "${db_name}" ]]; then
-    err "mysql: Datenbankname für '${container}' nicht ermittelbar"
+    err "mysql: Datenbankname für '${container}' nicht ermittelbar (MYSQL_DATABASE / MARIADB_DATABASE setzen)"
     return 1
   fi
 
+  local dump_err2
+  dump_err2=$(mktemp)
   if docker exec "${container}" \
-       mysqldump -u "${db_user}" -p"${db_pass}" \
+       "${dump_bin}" -u "${db_user}" -p"${db_pass}" \
          "${dump_args[@]}" "${db_name}" \
+       2>"${dump_err2}" \
      | gzip > "${outfile}"; then
+    rm -f "${dump_err2}"
     ok "mysql: ${container} (${db_name}) → $(human_size "${outfile}")"
   else
-    err "mysql: Dump von '${container}' fehlgeschlagen"
-    rm -f "${outfile}"
+    err "mysql: Dump von '${container}' fehlgeschlagen: $(cat "${dump_err2}" | head -1)"
+    rm -f "${dump_err2}" "${outfile}"
     return 1
   fi
 }
