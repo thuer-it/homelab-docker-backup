@@ -30,6 +30,15 @@ if [[ ! -f "${CONF_FILE}" ]]; then
   echo "→ cp config/backup.conf.example /etc/homelab-backup/backup.conf" >&2
   exit 1
 fi
+
+# Array-Defaults VOR source setzen, damit config sie überschreiben kann.
+# WICHTIG: Nicht ":= ()" verwenden — das setzt einen Scalar auf den String "()"
+# anstatt ein leeres Array zu initialisieren.
+declare -a DB_CONTAINERS=()
+declare -a EXTRA_PATHS=()
+declare -a EXCLUDE_VOLUMES=()
+declare -a EXCLUDE_CONTAINERS=()
+
 # shellcheck source=/dev/null
 source "${CONF_FILE}"
 
@@ -37,10 +46,6 @@ source "${CONF_FILE}"
 : "${BACKUP_ROOT:?BACKUP_ROOT muss gesetzt sein}"
 : "${RETENTION_DAYS:=14}"
 : "${DB_RETENTION_DAYS:=30}"
-: "${DB_CONTAINERS:=()}"
-: "${EXTRA_PATHS:=()}"
-: "${EXCLUDE_VOLUMES:=()}"
-: "${EXCLUDE_CONTAINERS:=()}"
 : "${SERVER_NAME:=$(hostname)}"
 
 export BACKUP_DATE
@@ -91,7 +96,7 @@ while IFS='|' read -r name image; do
 
   # Ausgeschlossene Container überspringen
   local_skip=false
-  for excl in "${EXCLUDE_CONTAINERS[@]:-}"; do
+  for excl in "${EXCLUDE_CONTAINERS[@]+"${EXCLUDE_CONTAINERS[@]}"}"; do
     [[ "${name}" == "${excl}" ]] && local_skip=true && break
   done
   [[ "${local_skip}" == "true" ]] && continue
@@ -106,7 +111,7 @@ while IFS='|' read -r name image; do
 done < <(docker ps --format '{{.Names}}|{{.Image}}' 2>/dev/null)
 
 # Explizit konfigurierte Container eintragen (überschreiben auto-discovery)
-for entry in "${DB_CONTAINERS[@]:-}"; do
+for entry in "${DB_CONTAINERS[@]+"${DB_CONTAINERS[@]}"}"; do
   c_name="${entry%%:*}"
   c_type="${entry##*:}"
   case "${c_type}" in
