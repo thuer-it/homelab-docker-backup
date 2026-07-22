@@ -102,10 +102,15 @@ while IFS='|' read -r name image; do
   [[ "${local_skip}" == "true" ]] && continue
 
   # Klassifizierung nach Image-Name (case-insensitive)
+  # Nur eigentlichen Image-Namen prüfen (ohne Registry-Prefix und Tag)
+  # "zabbix/zabbix-server-mysql:7" → "zabbix-server-mysql" → kein Match
+  # "mariadb:10.11" → "mariadb" → Match
   lower_image="${image,,}"
-  if [[ "${lower_image}" =~ postgres|pgvector|timescaledb ]]; then
+  image_name="${lower_image##*/}"
+  image_name="${image_name%%:*}"
+  if [[ "${image_name}" =~ ^(postgres|pgvector|timescaledb|postgis) ]]; then
     discovered_postgres["${name}"]="${image}"
-  elif [[ "${lower_image}" =~ mysql|mariadb ]]; then
+  elif [[ "${image_name}" =~ ^(mysql|mariadb|percona) ]]; then
     discovered_mysql["${name}"]="${image}"
   fi
 done < <(docker ps --format '{{.Names}}|{{.Image}}' 2>/dev/null)
