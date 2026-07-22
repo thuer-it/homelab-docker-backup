@@ -39,7 +39,9 @@ backup_bindmounts() {
     _should_skip "${src}" && continue
     auto_paths+=("${src}")
   done < <(
-    docker inspect $(docker ps -q) \
+    mapfile -t _running < <(docker ps -q 2>/dev/null)
+    [[ ${#_running[@]} -eq 0 ]] && exit 0
+    docker inspect "${_running[@]}" \
       --format '{{range .Mounts}}{{if eq .Type "bind"}}{{.Source}}{{"\n"}}{{end}}{{end}}' \
       2>/dev/null | sort -u
   )
