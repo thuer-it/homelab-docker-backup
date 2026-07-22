@@ -38,6 +38,7 @@ declare -a DB_CONTAINERS=()
 declare -a EXTRA_PATHS=()
 declare -a EXCLUDE_VOLUMES=()
 declare -a EXCLUDE_CONTAINERS=()
+# shellcheck disable=SC2034  # EXCLUDE_PATHS wird in modules/bindmounts.sh verwendet
 declare -a EXCLUDE_PATHS=()
 
 # shellcheck source=/dev/null
