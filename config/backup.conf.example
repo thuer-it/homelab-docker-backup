@@ -58,3 +58,8 @@ DOCKHAND_TOKEN=""         # Dockhand: Settings → Auth Tokens
 # Beispiel Zabbix-Sender: /usr/bin/zabbix_sender -z 192.168.0.253 -s "$(hostname)" -k backup.status -o "$1"
 # -----------------------------------------------------------------------------
 NOTIFY_CMD=""
+
+# Backup nur starten wenn BACKUP_ROOT ein aktiver NFS/CIFS-Mount ist.
+# Verhindert dass bei nicht-gemounteter NAS die lokale SSD vollläuft.
+# Auf "false" setzen wenn BACKUP_ROOT ein lokales Verzeichnis ist.
+REQUIRE_NETWORK_MOUNT=true

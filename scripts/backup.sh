@@ -70,9 +70,17 @@ if ! flock -n 9; then
 fi
 trap 'flock -u 9; rm -f "${LOCK_FILE}"' EXIT
 
-# ── NFS-Mount prüfen ─────────────────────────────────────────────────────────
+# ── NAS/NFS-Mount prüfen ────────────────────────────────────────────────────
 if [[ ! -d "${BACKUP_ROOT}" ]]; then
   die "Backup-Root '${BACKUP_ROOT}' nicht erreichbar — NFS gemountet?"
+fi
+
+# REQUIRE_NETWORK_MOUNT=true (Standard): Abbruch wenn BACKUP_ROOT kein
+# aktiver NFS/CIFS-Mount ist — verhindert Vollaufen der lokalen SSD
+if [[ "${REQUIRE_NETWORK_MOUNT:-true}" == "true" ]]; then
+  if ! findmnt --target "${BACKUP_ROOT}" --types nfs,nfs4,cifs,smb2 >/dev/null 2>&1; then
+    die "Backup-Root '${BACKUP_ROOT}' ist kein aktiver Netzwerk-Mount — Abbruch (SSD-Schutz)"
+  fi
 fi
 
 # ── Start ────────────────────────────────────────────────────────────────────
