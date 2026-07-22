@@ -23,13 +23,18 @@ backup_volumes() {
 
   local errors=0
   for vol in "${volumes[@]}"; do
-    # Ausschluss-Liste prüfen
-    local skip=false
-    for excl in "${EXCLUDE_VOLUMES[@]:-}"; do
-      [[ "${vol}" == "${excl}" ]] && skip=true && break
+    # Ausschluss-Liste + DB-Volumes prüfen
+    local skip=false skip_reason=""
+    for excl in "${EXCLUDE_VOLUMES[@]+"${EXCLUDE_VOLUMES[@]}"}"; do
+      [[ "${vol}" == "${excl}" ]] && skip=true && skip_reason="Ausschlussliste" && break
     done
+    if [[ "${skip}" == "false" ]]; then
+      for _db_vol in "${DB_VOLUMES[@]+"${DB_VOLUMES[@]}"}"; do
+        [[ "${vol}" == "${_db_vol}" ]] && skip=true && skip_reason="DB-Volume, via Dump gesichert" && break
+      done
+    fi
     if [[ "${skip}" == "true" ]]; then
-      log "volumes: '${vol}'— übersprungen (Ausschlussliste)"
+      log "volumes: '${vol}'— übersprungen (${skip_reason})"
       continue
     fi
 
