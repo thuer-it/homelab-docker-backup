@@ -2,7 +2,7 @@
 # =============================================================================
 # dockhand.sh — Dockhand Stack-Konfiguration exportieren
 # Exportiert:
-#   - Alle Compose-Files via Dockhand-API
+#   - Alle Compose-Files via Dockhand-API (alle Environments)
 #   - Dockhand-Datenbank-Volume (für kompletten Rebuild)
 # =============================================================================
 
@@ -18,46 +18,60 @@ backup_dockhand() {
   log "dockhand: Starte Export von ${DOCKHAND_URL}…"
 
   # ── 1. Compose-Files via API ──────────────────────────────────────────────
-  local stacks_json
-  if ! stacks_json=$(curl -sf \
+  # Stacks sind environment-spezifisch: erst Environments laden, dann je ?env=ID
+  local envs_json
+  if ! envs_json=$(curl -sf \
       -H "Authorization: Bearer ${DOCKHAND_TOKEN}" \
-      "${DOCKHAND_URL}/api/stacks" 2>/dev/null); then
+      "${DOCKHAND_URL}/api/environments" 2>/dev/null); then
     err "dockhand: API nicht erreichbar (${DOCKHAND_URL})"
     return 1
   fi
 
-  local stack_ids
-  mapfile -t stack_ids < <(echo "${stacks_json}" | jq -r '.[].id' 2>/dev/null)
+  local env_ids env_names
+  mapfile -t env_ids   < <(echo "${envs_json}" | jq -r '.[].id')
+  mapfile -t env_names < <(echo "${envs_json}" | jq -r '.[].name')
 
-  if [[ ${#stack_ids[@]} -eq 0 ]]; then
-    warn "dockhand: Keine Stacks gefunden"
-  fi
-
+  local total_stacks=0
   local errors=0
-  for id in "${stack_ids[@]}"; do
-    local stack_info
-    stack_info=$(curl -sf \
+
+  for i in "${!env_ids[@]}"; do
+    local env_id="${env_ids[$i]}"
+    local env_name="${env_names[$i]}"
+
+    local stacks_json
+    stacks_json=$(curl -sf \
       -H "Authorization: Bearer ${DOCKHAND_TOKEN}" \
-      "${DOCKHAND_URL}/api/stacks/${id}" 2>/dev/null) || continue
+      "${DOCKHAND_URL}/api/stacks?env=${env_id}" 2>/dev/null) || continue
 
-    local name env_id
-    name=$(echo "${stack_info}" | jq -r '.name // "stack-'"${id}"'"')
-    env_id=$(echo "${stack_info}" | jq -r '.environmentId // empty')
+    local stack_names
+    mapfile -t stack_names < <(echo "${stacks_json}" | jq -r '.[].name' 2>/dev/null)
+    [[ ${#stack_names[@]} -eq 0 ]] && continue
 
-    # Compose-File exportieren
-    local compose_file="${dest_dir}/compose/${name}.yml"
-    if curl -sf \
-         -H "Authorization: Bearer ${DOCKHAND_TOKEN}" \
-         "${DOCKHAND_URL}/api/stacks/${id}/compose?env=${env_id}" \
-         -o "${compose_file}" 2>/dev/null; then
-      log "dockhand: Stack '${name}' exportiert"
-    else
-      warn "dockhand: Stack '${name}'— kein Compose-File (discovered?)"
-      (( errors++ )) || true
-    fi
+    mkdir -p "${dest_dir}/compose/${env_name}"
+
+    for stack_name in "${stack_names[@]}"; do
+      local compose_file="${dest_dir}/compose/${env_name}/${stack_name}.yml"
+      local compose_raw
+      if compose_raw=$(curl -sf \
+           -H "Authorization: Bearer ${DOCKHAND_TOKEN}" \
+           "${DOCKHAND_URL}/api/stacks/${stack_name}/compose?env=${env_id}" \
+           2>/dev/null); then
+        # API gibt ggf. JSON {content:"..."} oder direkt YAML zurück
+        if echo "${compose_raw}" | jq -e '.content' >/dev/null 2>&1; then
+          echo "${compose_raw}" | jq -r '.content' > "${compose_file}"
+        else
+          echo "${compose_raw}" > "${compose_file}"
+        fi
+        log "dockhand: [${env_name}] Stack '${stack_name}' exportiert"
+        (( total_stacks++ )) || true
+      else
+        warn "dockhand: [${env_name}] Stack '${stack_name}' — kein Compose-File"
+        (( errors++ )) || true
+      fi
+    done
   done
 
-  ok "dockhand: ${#stack_ids[@]} Stacks verarbeitet, ${errors} ohne Compose-File"
+  ok "dockhand: ${total_stacks} Stacks exportiert, ${errors} ohne Compose-File"
 
   # ── 2. Dockhand-Datenbank-Volume ──────────────────────────────────────────
   # Ermittle Volume-Namen des Dockhand-Containers automatisch
