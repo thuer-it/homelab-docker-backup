@@ -31,9 +31,7 @@ if [[ ! -f "${CONF_FILE}" ]]; then
   exit 1
 fi
 
-# Array-Defaults VOR source setzen, damit config sie überschreiben kann.
-# WICHTIG: Nicht ":= ()" verwenden — das setzt einen Scalar auf den String "()"
-# anstatt ein leeres Array zu initialisieren.
+# Array-Defaults VOR source setzen (NICHT :=() — setzt Scalar auf String "()")
 declare -a DB_CONTAINERS=()
 declare -a EXTRA_PATHS=()
 declare -a EXCLUDE_VOLUMES=()
@@ -84,10 +82,6 @@ log "Ziel: ${BACKUP_ROOT}/${SERVER_NAME}/${BACKUP_DATE}"
 ERRORS=0
 
 # ── 1. Auto-Discovery: DB-Container erkennen ─────────────────────────────────
-# Ermittelt alle laufenden Container und klassifiziert sie nach Image-Name.
-# Explizit konfigurierte Container (DB_CONTAINERS) haben Vorrang.
-# Ausschluss via EXCLUDE_CONTAINERS.
-
 declare -A discovered_postgres=()
 declare -A discovered_mysql=()
 
@@ -101,13 +95,12 @@ while IFS='|' read -r name image; do
   done
   [[ "${local_skip}" == "true" ]] && continue
 
-  # Klassifizierung nach Image-Name (case-insensitive)
-  # Nur den eigentlichen Image-Namen prüfen (ohne Registry-Prefix und Tag),
-  # damit Applikations-Images wie "zabbix/zabbix-server-mysql" NICHT matchen.
-  # Beispiele: "mariadb:10.11" → "mariadb" ✓  |  "zabbix/zabbix-web-nginx-mysql:6" → "zabbix-web-nginx-mysql" ✗
+  # Nur eigentlichen Image-Namen prüfen (ohne Registry-Prefix und Tag)
+  # "zabbix/zabbix-server-mysql:7" → "zabbix-server-mysql" → kein Match
+  # "mariadb:10.11" → "mariadb" → Match
   lower_image="${image,,}"
-  image_name="${lower_image##*/}"   # Registry-Prefix entfernen (alles bis letztem /)
-  image_name="${image_name%%:*}"    # Tag entfernen (alles ab erstem :)
+  image_name="${lower_image##*/}"
+  image_name="${image_name%%:*}"
   if [[ "${image_name}" =~ ^(postgres|pgvector|timescaledb|postgis) ]]; then
     discovered_postgres["${name}"]="${image}"
   elif [[ "${image_name}" =~ ^(mysql|mariadb|percona) ]]; then
