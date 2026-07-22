@@ -24,6 +24,10 @@ _should_skip() {
   for prefix in "${BINDMOUNT_SKIP_PREFIXES[@]}"; do
     [[ "${path}" == "${prefix}" || "${path}" == "${prefix}/"* ]] && return 0
   done
+  # Konfigurierbare Ausschlussliste (EXCLUDE_PATHS in backup.conf)
+  for excl in "${EXCLUDE_PATHS[@]+"${EXCLUDE_PATHS[@]}"}"; do
+    [[ "${path}" == "${excl}" || "${path}" == "${excl}/"* ]] && return 0
+  done
   return 1
 }
 

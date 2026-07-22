@@ -45,6 +45,16 @@ EXCLUDE_VOLUMES=(
 )
 
 # -----------------------------------------------------------------------------
+# Bind-Mount-Pfade vom Backup ausschließen
+# Pfad und alle Unterpfade werden übersprungen.
+# Sinnvoll für große Mediendaten (Fotos, Videos) die separat gesichert werden.
+# -----------------------------------------------------------------------------
+EXCLUDE_PATHS=(
+  # "/home/pi/docker_storage/immich/upload"
+  # "/mnt/media"
+)
+
+# -----------------------------------------------------------------------------
 # Dockhand-Export (nur auf dem Server, auf dem Dockhand läuft)
 # -----------------------------------------------------------------------------
 DOCKHAND_ENABLED=false
