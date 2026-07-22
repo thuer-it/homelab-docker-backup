@@ -134,6 +134,16 @@ for entry in "${DB_CONTAINERS[@]+"${DB_CONTAINERS[@]}"}"; do
   esac
 done
 
+# ── DB-Volumes ermitteln (werden via Dump gesichert, nicht via tar) ─────────
+declare -a DB_VOLUMES=()
+for _c in "${!discovered_postgres[@]}" "${!discovered_mysql[@]}"; do
+  while IFS= read -r _vol; do
+    [[ -n "${_vol}" ]] && DB_VOLUMES+=("${_vol}")
+  done < <(docker inspect "${_c}" \
+    --format '{{range .Mounts}}{{if eq .Type "volume"}}{{.Name}}{{"\n"}}{{end}}{{end}}' \
+    2>/dev/null)
+done
+
 # ── 2. Datenbank-Dumps ────────────────────────────────────────────────────────
 log "── Datenbank-Dumps ──"
 
